@@ -28,10 +28,34 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
+      - name: Show GitHub OIDC claims
+        shell: bash
+        run: |
+          oidc_response="$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com")"
+          oidc_token="$(jq --exit-status --raw-output '.value' <<<"$oidc_response")"
+          oidc_payload="${oidc_token#*.}"
+          oidc_payload="${oidc_payload%%.*}"
+          oidc_payload="${oidc_payload//-/+}"
+          oidc_payload="${oidc_payload//_/\/}"
+
+          case $((${#oidc_payload} % 4)) in
+            0) ;;
+            2) oidc_payload="${oidc_payload}==" ;;
+            3) oidc_payload="${oidc_payload}=" ;;
+            *) echo "Invalid OIDC token payload encoding." >&2; exit 1 ;;
+          esac
+
+          printf '%s' "$oidc_payload" \
+            | base64 --decode \
+            | jq --exit-status '{iss: .iss, aud: .aud, sub: .sub}'
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
         with:
           aws-region: eu-central-1
+          retry-max-attempts: 1
           role-session-name: github-amazon-connect-lab-dev
           role-to-assume: arn:aws:iam::854010287302:role/github-amazon-connect-lab-dev
 
