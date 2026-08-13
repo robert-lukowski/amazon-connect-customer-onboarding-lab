@@ -1,8 +1,8 @@
 # Amazon Connect customer onboarding lab
 
-Phase 1 provides a single-repository Terraform foundation for onboarding Amazon Connect customers into AWS DEV. It targets `eu-central-1`, looks up the existing Connect instance with alias `robert-support`, and includes the first customer, `demo-a`.
+This lab provides a single-repository Terraform foundation for onboarding Amazon Connect customers into AWS DEV. It targets `eu-central-1`, looks up the existing Connect instance with alias `robert-support`, and includes the first customer, `demo-a`.
 
-No AWS resources have been created by this repository. The workflows validate Terraform only; they do not authenticate to AWS, plan, apply, or destroy infrastructure.
+Phase 2 adds a practical GitHub Actions deployment POC. The manual workflow authenticates to AWS through GitHub OIDC, plans `demo-a`, and applies it to DEV. No destroy workflow is provided.
 
 ## Phase 1 layout
 
@@ -60,18 +60,32 @@ Initialization downloads the Terraform provider from the Terraform Registry but 
 
 `bootstrap` defines a private, encrypted S3 bucket with versioning enabled, deletion protection, and a policy that rejects non-TLS requests. The caller must provide a globally unique bucket name with an account-specific or GUID suffix. The customer root uses a partial S3 backend with encryption and native S3 state locking (`use_lockfile = true`). The bucket and key are intentionally not hard-coded together.
 
-When AWS access and an OIDC role are approved in a later phase, initialize a customer with an explicit bucket and per-customer key:
+The DEV customer deployment initializes with this bucket and a per-customer key:
 
 ```text
 terraform -chdir=terraform init -reconfigure \
-  -backend-config="bucket=<dev-state-bucket>" \
+  -backend-config="bucket=amazon-connect-tfstate-854010287302-eu-central-1" \
   -backend-config="key=customers/demo-a/dev/terraform.tfstate"
 ```
 
-The next customer will use the same root and module with a different customer key, YAML path, and backend key. CAT and PROD state layouts and deployment logic are not part of Phase 1.
+The next customer will use the same root and module with a different customer key, YAML path, and backend key. CAT and PROD remain out of scope.
 
 ## GitHub Actions
 
 `.github/workflows/validate.yml` calls `.github/workflows/reusable-terraform.yml` with only a customer key. The reusable workflow validates the key, derives `customers/<customer-key>/customer.yaml`, and runs `terraform fmt -check`, `terraform init -backend=false`, and `terraform validate` only.
 
-The validation workflow has only `contents: read` permission. GitHub OIDC permissions and AWS authentication will be introduced later in a separate deployment job; Phase 1 does not configure AWS credentials or create IAM resources.
+The validation workflow has only `contents: read` permission. The separate manual deployment workflow has `contents: read` and `id-token: write`, exchanges its GitHub token for short-lived AWS credentials, and can assume its DEV role only from the repository's `main` branch.
+
+## Deploy demo-a from GitHub Actions
+
+1. Bootstrap the DEV state bucket and GitHub role once from an authorized local AWS session:
+
+   ```powershell
+   terraform -chdir=bootstrap init
+   terraform -chdir=bootstrap apply -auto-approve `
+     -var="state_bucket_name=amazon-connect-tfstate-854010287302-eu-central-1"
+   ```
+
+2. Merge the deployment workflow into `main`. Its OIDC trust intentionally rejects other branches.
+3. In GitHub, open **Actions**, select **Deploy customer to DEV**, choose **Run workflow** on `main`, select `demo-a`, and run it.
+4. Review the workflow's Terraform plan and apply output. A successful plan automatically proceeds to `terraform apply -auto-approve`; customer deployment is not run locally.

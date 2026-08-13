@@ -1,4 +1,7 @@
 locals {
+  github_repository = "robert-lukowski/amazon-connect-customer-onboarding-lab"
+  github_role_name  = "github-amazon-connect-lab-dev"
+
   state_tags = merge(
     {
       Environment = "dev"
@@ -80,4 +83,76 @@ resource "aws_s3_bucket_versioning" "terraform_state" {
   versioning_configuration {
     status = "Enabled"
   }
+}
+
+resource "aws_iam_openid_connect_provider" "github_actions" {
+  url = "https://token.actions.githubusercontent.com"
+
+  client_id_list = ["sts.amazonaws.com"]
+
+  tags = merge(
+    local.state_tags,
+    { Name = "github-actions" },
+  )
+}
+
+resource "aws_iam_role" "github_deployment" {
+  name = local.github_role_name
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "GitHubActionsMainBranch"
+        Effect = "Allow"
+        Principal = {
+          Federated = aws_iam_openid_connect_provider.github_actions.arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+            "token.actions.githubusercontent.com:sub" = "repo:${local.github_repository}:ref:refs/heads/main"
+          }
+        }
+      },
+    ]
+  })
+
+  tags = merge(
+    local.state_tags,
+    { Name = local.github_role_name },
+  )
+}
+
+resource "aws_iam_role_policy_attachment" "amazon_connect_full_access" {
+  role       = aws_iam_role.github_deployment.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonConnect_FullAccess"
+}
+
+resource "aws_iam_role_policy" "terraform_state" {
+  name = "terraform-state-customers"
+  role = aws_iam_role.github_deployment.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "ListTerraformStateBucket"
+        Effect   = "Allow"
+        Action   = "s3:ListBucket"
+        Resource = aws_s3_bucket.terraform_state.arn
+      },
+      {
+        Sid    = "ManageCustomerTerraformState"
+        Effect = "Allow"
+        Action = [
+          "s3:DeleteObject",
+          "s3:GetObject",
+          "s3:PutObject",
+        ]
+        Resource = "${aws_s3_bucket.terraform_state.arn}/customers/*"
+      },
+    ]
+  })
 }
