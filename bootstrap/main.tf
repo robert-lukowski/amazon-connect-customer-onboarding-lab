@@ -114,7 +114,7 @@ resource "aws_iam_role" "github_deployment" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:${local.github_repository}:*"
+            "token.actions.githubusercontent.com:sub" = "repo:robert-lukowski@207513888/amazon-connect-customer-onboarding-lab@1333003528:*"
           }
         }
       },
