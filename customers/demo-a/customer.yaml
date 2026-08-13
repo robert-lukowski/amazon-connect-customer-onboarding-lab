@@ -1,0 +1,57 @@
+tags:
+  Application: amazon-connect
+  CostCenter: customer-onboarding-lab
+  Owner: support-platform
+
+hours_of_operation:
+  standard:
+    name: support-hours
+    description: Weekday customer support hours for demo-a.
+    time_zone: Europe/Warsaw
+    schedule:
+      monday:
+        - start: "08:00"
+          end: "17:00"
+      tuesday:
+        - start: "08:00"
+          end: "17:00"
+      wednesday:
+        - start: "08:00"
+          end: "17:00"
+      thursday:
+        - start: "08:00"
+          end: "17:00"
+      friday:
+        - start: "08:00"
+          end: "17:00"
+
+queues:
+  support:
+    name: support
+    description: Primary inbound support queue for demo-a.
+    hours_of_operation_key: standard
+
+routing_profiles:
+  support_agents:
+    name: support-agents
+    description: Routing profile for demo-a support agents.
+    default_outbound_queue_key: support
+    media_concurrencies:
+      voice:
+        channel: VOICE
+        concurrency: 1
+        cross_channel_behavior: ROUTE_CURRENT_CHANNEL_ONLY
+    queue_configs:
+      support_voice:
+        queue_key: support
+        channel: VOICE
+        delay: 0
+        priority: 1
+
+security_profiles:
+  support_agent:
+    name: support-agent
+    description: Minimum permissions for demo-a support agents.
+    permissions:
+      - BasicAgentAccess
+      - OutboundCallAccess

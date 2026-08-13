@@ -1,0 +1,59 @@
+name: Reusable Terraform validation
+
+on:
+  workflow_call:
+    inputs:
+      customer_key:
+        description: Stable customer key used for naming and resource addresses.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate ${{ inputs.customer_key }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: terraform
+    env:
+      AWS_REGION: eu-central-1
+      TF_IN_AUTOMATION: "true"
+      TF_VAR_aws_region: eu-central-1
+      TF_VAR_customer_key: ${{ inputs.customer_key }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Validate customer selection
+        env:
+          CUSTOMER_KEY: ${{ inputs.customer_key }}
+        run: |
+          if [[ ! "$CUSTOMER_KEY" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+            echo "Invalid customer_key: expected a lowercase slug." >&2
+            exit 1
+          fi
+
+          if [[ ! -f "$GITHUB_WORKSPACE/customers/$CUSTOMER_KEY/customer.yaml" ]]; then
+            echo "Customer configuration not found: customers/$CUSTOMER_KEY/customer.yaml" >&2
+            exit 1
+          fi
+        working-directory: .
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: "1.15.8"
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive
+        working-directory: .
+
+      - name: Initialize without backend
+        run: terraform init -backend=false -input=false
+
+      - name: Validate configuration
+        run: terraform validate -no-color

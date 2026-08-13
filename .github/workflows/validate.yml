@@ -1,0 +1,17 @@
+name: Validate demo-a
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    uses: ./.github/workflows/reusable-terraform.yml
+    with:
+      customer_key: demo-a
