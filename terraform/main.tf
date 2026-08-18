@@ -8,5 +8,5 @@ module "customer" {
   configuration = local.customer_configuration
   customer_key  = var.customer_key
   environment   = var.environment
-  instance_id   = data.aws_connect_instance.existing.instance_id
+  instance_id   = data.aws_connect_instance.existing.id
 }
