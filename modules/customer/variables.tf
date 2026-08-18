@@ -108,7 +108,16 @@ variable "configuration" {
           for interval in intervals :
           can(regex("^(?:[01][0-9]|2[0-3]):[0-5][0-9]$", interval.start)) &&
           can(regex("^(?:[01][0-9]|2[0-3]):[0-5][0-9]$", interval.end)) &&
-          interval.start < interval.end
+          try(
+            (
+              tonumber(split(":", interval.start)[0]) * 60 +
+              tonumber(split(":", interval.start)[1])
+            ) < (
+              tonumber(split(":", interval.end)[0]) * 60 +
+              tonumber(split(":", interval.end)[1])
+            ),
+            false,
+          )
         ])
       ]
     ]))
