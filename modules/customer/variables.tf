@@ -112,7 +112,7 @@ variable "configuration" {
             (
               tonumber(split(":", interval.start)[0]) * 60 +
               tonumber(split(":", interval.start)[1])
-            ) < (
+              ) < (
               tonumber(split(":", interval.end)[0]) * 60 +
               tonumber(split(":", interval.end)[1])
             ),
