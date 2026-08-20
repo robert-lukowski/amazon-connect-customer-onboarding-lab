@@ -1,4 +1,4 @@
-name: Validate demo-a
+name: Validate customers
 
 on:
   pull_request:
@@ -12,6 +12,12 @@ permissions:
 
 jobs:
   terraform:
+    strategy:
+      fail-fast: false
+      matrix:
+        customer_key:
+          - demo-a
+          - demo-b
     uses: ./.github/workflows/reusable-terraform.yml
     with:
-      customer_key: demo-a
+      customer_key: ${{ matrix.customer_key }}
