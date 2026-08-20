@@ -9,6 +9,7 @@ on:
         type: choice
         options:
           - demo-a
+          - demo-b
 
 permissions:
   contents: read
