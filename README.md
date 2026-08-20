@@ -1,8 +1,8 @@
 # Amazon Connect customer onboarding lab
 
-This lab provides a single-repository Terraform foundation for onboarding Amazon Connect customers into AWS DEV. It targets `eu-central-1`, looks up the existing Connect instance with alias `robert-support`, and includes the first customer, `demo-a`.
+This lab provides a single-repository Terraform foundation for onboarding Amazon Connect customers into AWS DEV. It targets `eu-central-1`, looks up the existing Connect instance with alias `robert-support`, and includes two sample customers, `demo-a` and `demo-b`.
 
-Phase 2 adds a practical GitHub Actions deployment POC. The manual workflow authenticates to AWS through GitHub OIDC, plans `demo-a`, and applies it to DEV. No destroy workflow is provided.
+Phase 2 adds a practical GitHub Actions deployment POC. The manual workflow authenticates to AWS through GitHub OIDC, plans the selected customer and applies it to DEV. No destroy workflow is provided.
 
 ## Phase 1 layout
 
@@ -10,6 +10,7 @@ Phase 2 adds a practical GitHub Actions deployment POC. The manual workflow auth
 .github/workflows/       Terraform validation workflows
 bootstrap/               S3 state-bucket design
 customers/demo-a/        Business configuration for demo-a
+customers/demo-b/        Business configuration for demo-b
 modules/customer/        Reusable Amazon Connect customer module
 scripts/                 Local validation helper
 terraform/               DEV root module and partial S3 backend
@@ -27,7 +28,7 @@ Lambda, CloudWatch alarms, users, phone numbers, and complex contact flows are i
 
 ## Configuration model
 
-Business settings live in `customers/demo-a/customer.yaml`. Each collection is a map whose key is a stable logical identifier, such as `standard`, `support`, or `support_agents`. Terraform uses these keys with `for_each`, so changing a display name does not change the Terraform resource address.
+Business settings live in `customers/<customer-key>/customer.yaml`. Each collection is a map whose key is a stable logical identifier, such as `standard`, `support`, or `support_agents`. Terraform uses these keys with `for_each`, so changing a display name does not change the Terraform resource address.
 
 Names use this convention:
 
@@ -68,15 +69,15 @@ terraform -chdir=terraform init -reconfigure \
   -backend-config="key=customers/demo-a/dev/terraform.tfstate"
 ```
 
-The next customer will use the same root and module with a different customer key, YAML path, and backend key. CAT and PROD remain out of scope.
+Each customer uses the same root and module with its own customer key, YAML path, and backend key. CAT and PROD remain out of scope.
 
 ## GitHub Actions
 
-`.github/workflows/validate.yml` calls `.github/workflows/reusable-terraform.yml` with only a customer key. The reusable workflow validates the key, derives `customers/<customer-key>/customer.yaml`, and runs `terraform fmt -check`, `terraform init -backend=false`, and `terraform validate` only.
+`.github/workflows/validate.yml` calls `.github/workflows/reusable-terraform.yml` through a matrix for `demo-a` and `demo-b`. The reusable workflow validates the key, derives `customers/<customer-key>/customer.yaml`, and runs `terraform fmt -check`, `terraform init -backend=false`, and `terraform validate` only.
 
 The validation workflow has only `contents: read` permission. The separate manual deployment workflow has `contents: read` and `id-token: write`, exchanges its GitHub token for short-lived AWS credentials, and can assume its DEV role only from the repository's `main` branch.
 
-## Deploy demo-a from GitHub Actions
+## Deploy a customer from GitHub Actions
 
 1. Bootstrap the DEV state bucket and GitHub role once from an authorized local AWS session:
 
@@ -87,5 +88,5 @@ The validation workflow has only `contents: read` permission. The separate manua
    ```
 
 2. Merge the deployment workflow into `main`. Its OIDC trust intentionally rejects other branches.
-3. In GitHub, open **Actions**, select **Deploy customer to DEV**, choose **Run workflow** on `main`, select `demo-a`, and run it.
+3. In GitHub, open **Actions**, select **Deploy customer to DEV**, choose **Run workflow** on `main`, select `demo-a` or `demo-b`, and run it.
 4. Review the workflow's Terraform plan and apply output. A successful plan automatically proceeds to `terraform apply -auto-approve`; customer deployment is not run locally.

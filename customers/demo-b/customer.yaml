@@ -1,0 +1,69 @@
+tags:
+  Application: amazon-connect
+  CostCenter: customer-onboarding-lab
+  Owner: support-platform
+
+hours_of_operation:
+  extended:
+    name: extended-support-hours
+    description: Extended customer support hours for demo-b.
+    time_zone: Europe/Berlin
+    schedule:
+      monday:
+        - start: "07:00"
+          end: "19:00"
+      tuesday:
+        - start: "07:00"
+          end: "19:00"
+      wednesday:
+        - start: "07:00"
+          end: "19:00"
+      thursday:
+        - start: "07:00"
+          end: "19:00"
+      friday:
+        - start: "07:00"
+          end: "19:00"
+      saturday:
+        - start: "08:00"
+          end: "14:00"
+
+queues:
+  service_desk:
+    name: service-desk
+    description: Primary inbound service desk queue for demo-b.
+    hours_of_operation_key: extended
+  escalation:
+    name: escalation
+    description: Escalation queue for demo-b.
+    hours_of_operation_key: extended
+
+routing_profiles:
+  service_desk_agents:
+    name: service-desk-agents
+    description: Routing profile for demo-b service desk agents.
+    default_outbound_queue_key: service_desk
+    media_concurrencies:
+      voice:
+        channel: VOICE
+        concurrency: 1
+        cross_channel_behavior: ROUTE_CURRENT_CHANNEL_ONLY
+    queue_configs:
+      service_desk_voice:
+        queue_key: service_desk
+        channel: VOICE
+        delay: 0
+        priority: 1
+      escalation_voice:
+        queue_key: escalation
+        channel: VOICE
+        delay: 30
+        priority: 2
+
+security_profiles:
+  service_desk_agent:
+    name: service-desk-agent
+    description: Minimum permissions for demo-b service desk agents.
+    permissions:
+      - BasicAgentAccess
+      - OutboundCallAccess
